@@ -7,14 +7,14 @@ import android.graphics.PointF
 import android.os.Build
 import android.os.Bundle
 import android.text.Html
-import android.text.method.ScrollingMovementMethod
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
-import android.view.animation.TranslateAnimation
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import com.example.myapplication.anchorsheet.AnchorSheetBehavior
+import com.example.myapplication.anchorsheet.AnchorSheetBehavior.AnchorSheetCallback
 import com.example.myapplication.repository.Repository
 import com.example.myapplication.utils.Constants.Companion.CALLOUT_LAYER_ID
 import com.example.myapplication.utils.Constants.Companion.DESCRIPTION_SELECTED
@@ -29,6 +29,7 @@ import com.mapbox.geojson.Feature
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
 import com.mapbox.mapboxsdk.Mapbox
+import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
 import com.mapbox.mapboxsdk.geometry.LatLng
 import com.mapbox.mapboxsdk.maps.MapboxMap
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback
@@ -38,8 +39,10 @@ import com.mapbox.mapboxsdk.style.layers.PropertyFactory.*
 import com.mapbox.mapboxsdk.style.layers.SymbolLayer
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource
 import kotlinx.android.synthetic.main.activity_mapview.*
-import kotlinx.android.synthetic.main.activity_mapview.view.*
+import kotlinx.android.synthetic.main.bottomsheet_map.*
+import kotlinx.android.synthetic.main.bottomsheet_map.view.*
 import java.util.*
+import kotlin.math.roundToInt
 
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, MapboxMap.OnMapClickListener {
@@ -47,6 +50,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, MapboxMap.OnMapCli
     private var mapboxMap: MapboxMap? = null
     private var source: GeoJsonSource? = null
     private var featureCollection: FeatureCollection? = null
+    private var bsBehavior: AnchorSheetBehavior<*>? = null
+    private val mLoc: LatLng? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,12 +81,65 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, MapboxMap.OnMapCli
 
         setContentView(R.layout.activity_mapview)
 
+        initAnchorSheet()
+
         // Initialize
         viewModel = ViewModelProvider(this, viewModelFactory).get(MainViewModel::class.java)
         loadPoints()
 
         mapView?.onCreate(savedInstanceState)
         mapView?.getMapAsync(this)
+    }
+
+    private fun initAnchorSheet() {
+        bsBehavior = AnchorSheetBehavior.from(bottomsheet_map)
+        (bsBehavior as AnchorSheetBehavior<*>).state = AnchorSheetBehavior.STATE_COLLAPSED
+
+        //anchor offset. any value between 0 and 1 depending upon the position u want
+        (bsBehavior as AnchorSheetBehavior<*>).setAnchorOffset(0.8f)
+        (bsBehavior as AnchorSheetBehavior<*>).setAnchorSheetCallback(object :
+            AnchorSheetCallback() {
+            override fun onStateChanged(bottomSheet: View, newState: Int) {
+                if (newState == AnchorSheetBehavior.STATE_COLLAPSED) {
+                    //action if needed
+                }
+                if (newState == AnchorSheetBehavior.STATE_EXPANDED) {
+                }
+                if (newState == AnchorSheetBehavior.STATE_DRAGGING) {
+                }
+                if (newState == AnchorSheetBehavior.STATE_ANCHOR) {
+                }
+            }
+
+            override fun onSlide(bottomSheet: View, slideOffset: Float) {
+                val h = bottomSheet.height.toFloat()
+                val off = h * slideOffset
+                when ((bsBehavior as AnchorSheetBehavior<*>).state) {
+                    AnchorSheetBehavior.STATE_DRAGGING -> {
+                        setMapPaddingBotttom(off)
+                        //reposition marker at the center
+                        if (mLoc != null) mapboxMap?.moveCamera(CameraUpdateFactory.newLatLng(mLoc))
+                    }
+                    AnchorSheetBehavior.STATE_SETTLING -> {
+                        setMapPaddingBotttom(off)
+                        //reposition marker at the center
+                        if (mLoc != null) mapboxMap?.moveCamera(CameraUpdateFactory.newLatLng(mLoc))
+                    }
+                    AnchorSheetBehavior.STATE_HIDDEN -> {
+                    }
+                    AnchorSheetBehavior.STATE_EXPANDED -> {
+                    }
+                    AnchorSheetBehavior.STATE_COLLAPSED -> {
+                    }
+                }
+            }
+        })
+    }
+
+    private fun setMapPaddingBotttom(offset: Float) {
+        //From 0.0 (min) - 1.0 (max) // bsExpanded - bsCollapsed;
+        val maxMapPaddingBottom = 1.0f
+        mapboxMap?.setPadding(0, 0, 0, (offset * maxMapPaddingBottom).roundToInt())
     }
 
     fun setWindowFlag(activity: Activity, bits: Int, on: Boolean) {
@@ -209,56 +267,35 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, MapboxMap.OnMapCli
                         val description = featureList[i].getStringProperty(
                             DESCRIPTION_SELECTED
                         )
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-                            info_card.title.text = Html.fromHtml(title, Html.FROM_HTML_MODE_LEGACY)
-                            info_card.subtitle.text =
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                            bottomsheet_map.title.text = Html.fromHtml(
+                                title,
+                                Html.FROM_HTML_MODE_LEGACY
+                            )
+                            bottomsheet_map.subtitle.text =
                                 Html.fromHtml(subtitle, Html.FROM_HTML_MODE_LEGACY)
-                            info_card.description.text =
+                            bottomsheet_map.description.text =
                                 Html.fromHtml(description, Html.FROM_HTML_MODE_LEGACY)
                         } else {
-                            info_card.title.text = Html.fromHtml(title)
-                            info_card.subtitle.text = Html.fromHtml(subtitle)
-                            info_card.description.text = Html.fromHtml(description)
+                            bottomsheet_map.title.text = Html.fromHtml(title)
+                            bottomsheet_map.subtitle.text = Html.fromHtml(subtitle)
+                            bottomsheet_map.description.text = Html.fromHtml(description)
                         }
 
-                        info_card.description.movementMethod = ScrollingMovementMethod()
 
-                        slideUp(info_card)
                     }
                 }
             }
+            bottomsheet_map.visibility = View.VISIBLE
+            if(bsBehavior?.state == AnchorSheetBehavior.STATE_COLLAPSED) {
+                bsBehavior?.state = AnchorSheetBehavior.STATE_ANCHOR
+            }
             true
         } else {
-            slideDown(info_card)
+            bottomsheet_map.visibility = View.GONE
+            bsBehavior?.state = AnchorSheetBehavior.STATE_COLLAPSED
             false
         }
-    }
-
-    // Animation to slide up the card information
-    private fun slideUp(view: View) {
-        view.visibility = View.VISIBLE
-        val animate = TranslateAnimation(
-            0.0f,
-            0.0f,
-            view.height.toFloat(),
-            0.0f
-        )
-        animate.duration = 500
-        animate.fillAfter = true
-        view.startAnimation(animate)
-    }
-
-    // Animation to slide down the card information
-    private fun slideDown(view: View) {
-        val animate = TranslateAnimation(
-            0.0f,
-            0.0f,
-            0.0f,
-            view.height.toFloat()
-        )
-        animate.duration = 500
-        animate.fillAfter = true
-        view.startAnimation(animate)
     }
 
     // Load the Map points, filter to get only with the type is SimplePoi, and create a list of features who will display when clicking on a marker
