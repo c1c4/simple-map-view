@@ -113,7 +113,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, MapboxMap.OnMapCli
             AnchorSheetCallback() {
             override fun onStateChanged(bottomSheet: View, newState: Int) {
                 if (newState == AnchorSheetBehavior.STATE_COLLAPSED) {
-                    //action if needed
                 }
                 if (newState == AnchorSheetBehavior.STATE_EXPANDED) {
                 }
@@ -254,8 +253,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, MapboxMap.OnMapCli
      * Adds the GeoJSON source to the map
      */
     private fun setupSource(loadedStyle: Style) {
-        source = GeoJsonSource(GEOJSON_SOURCE_ID, featureCollection)
-        loadedStyle.addSource(source!!)
+        if (source == null) {
+            source = GeoJsonSource(GEOJSON_SOURCE_ID, featureCollection)
+            loadedStyle.addSource(source!!)
+        }
     }
 
     /**
@@ -282,14 +283,16 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, MapboxMap.OnMapCli
      * Setup a layer with maki icons, eg. west coast city.
      */
     private fun setUpMarkerLayer(loadedStyle: Style) {
-        loadedStyle.addLayer(
-            SymbolLayer(MARKER_LAYER_ID, GEOJSON_SOURCE_ID)
-                .withProperties(
-                    iconImage(MARKER_IMAGE_ID),
-                    iconAllowOverlap(true),
-                    iconOffset(arrayOf(0f, -8f))
-                )
-        )
+        if (loadedStyle.getLayer(MARKER_LAYER_ID) == null) {
+            loadedStyle.addLayer(
+                SymbolLayer(MARKER_LAYER_ID, GEOJSON_SOURCE_ID)
+                    .withProperties(
+                        iconImage(MARKER_IMAGE_ID),
+                        iconAllowOverlap(true),
+                        iconOffset(arrayOf(0f, -8f))
+                    )
+            )
+        }
     }
 
     /**
@@ -300,15 +303,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, MapboxMap.OnMapCli
      *
      */
     private fun setUpInfoWindowLayer(loadedStyle: Style) {
-        loadedStyle.addLayer(
-            SymbolLayer(CALLOUT_LAYER_ID, GEOJSON_SOURCE_ID)
-                .withProperties( /* show image with id title based on the value of the name feature property */
-                    iconImage("{title}"),  /* set anchor of icon to bottom-left */
-                    iconAnchor(ICON_ANCHOR_BOTTOM),  /* all info window and marker image to appear at the same time*/
-                    iconAllowOverlap(true),  /* offset the info window to be above the marker */
-                    iconOffset(arrayOf(-2f, -28f))
-                )
-        )
+        if (loadedStyle.getLayer(CALLOUT_LAYER_ID) == null) {
+            loadedStyle.addLayer(
+                SymbolLayer(CALLOUT_LAYER_ID, GEOJSON_SOURCE_ID)
+                    .withProperties( /* show image with id title based on the value of the name feature property */
+                        iconImage("{title}"),  /* set anchor of icon to bottom-left */
+                        iconAnchor(ICON_ANCHOR_BOTTOM),  /* all info window and marker image to appear at the same time*/
+                        iconAllowOverlap(true),  /* offset the info window to be above the marker */
+                        iconOffset(arrayOf(-2f, -28f))
+                    )
+            )
+        }
     }
 
     /**
