@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.text.Html
 import android.text.method.LinkMovementMethod
+import android.util.DisplayMetrics
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
@@ -17,8 +18,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import com.example.myapplication.anchorsheet.AnchorSheetBehavior
-import com.example.myapplication.anchorsheet.AnchorSheetBehavior.AnchorSheetCallback
 import com.example.myapplication.repository.Repository
 import com.example.myapplication.utils.Constants.Companion.CALLOUT_LAYER_ID
 import com.example.myapplication.utils.Constants.Companion.DESCRIPTION_SELECTED
@@ -29,13 +28,14 @@ import com.example.myapplication.utils.Constants.Companion.MARKER_LAYER_ID
 import com.example.myapplication.utils.Constants.Companion.SUBTITLE_SELECTED
 import com.example.myapplication.utils.Constants.Companion.TITLE_SELECTED
 import com.example.myapplication.utils.Constants.Companion.treatNullValue
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.card.MaterialCardView
 import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.geojson.Feature
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
 import com.mapbox.mapboxsdk.Mapbox
-import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
 import com.mapbox.mapboxsdk.geometry.LatLng
 import com.mapbox.mapboxsdk.location.LocationComponentActivationOptions
 import com.mapbox.mapboxsdk.location.LocationComponentOptions
@@ -57,30 +57,30 @@ import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, MapboxMap.OnMapClickListener,
     PermissionsListener {
+    private lateinit var bottomSheetBehavior: BottomSheetBehavior<MaterialCardView>
     private lateinit var viewModel: MainViewModel
     private var mapboxMap: MapboxMap? = null
     private var source: GeoJsonSource? = null
     private var featureCollection: FeatureCollection? = null
-    private var bsBehavior: AnchorSheetBehavior<*>? = null
-    private val mLoc: LatLng? = null
     private var permissionsManager: PermissionsManager = PermissionsManager(this)
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (Build.VERSION.SDK_INT >= 19 && Build.VERSION.SDK_INT < 21) {
-            setWindowFlag(this, WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS, true)
-        }
-        if (Build.VERSION.SDK_INT >= 19) {
-            window.decorView.systemUiVisibility =
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-        }
-        //make fully Android Transparent Status bar
-        //make fully Android Transparent Status bar
-        if (Build.VERSION.SDK_INT >= 21) {
-            setWindowFlag(this, WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS, false)
-            window.statusBarColor = Color.TRANSPARENT
-        }
+//        if (Build.VERSION.SDK_INT >= 19 && Build.VERSION.SDK_INT < 21) {
+//            setWindowFlag(this, WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS, true)
+//        }
+//        if (Build.VERSION.SDK_INT >= 19) {
+//            window.decorView.systemUiVisibility =
+//                View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+//        }
+//
+//        //make fully Android Transparent Status bar
+//        if (Build.VERSION.SDK_INT >= 21) {
+//            setWindowFlag(this, WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS, false)
+//
+//        }
 
         // Hide ActionBar to leave only the map
         supportActionBar?.hide()
@@ -93,7 +93,16 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, MapboxMap.OnMapCli
 
         setContentView(R.layout.activity_mapview)
 
-        initAnchorSheet()
+        bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet)
+        bottomSheetBehavior.isHideable = false
+
+        val childLayoutParams = bottomSheet.layoutParams
+        val displayMetrics = DisplayMetrics()
+        windowManager.defaultDisplay.getMetrics(displayMetrics)
+
+        childLayoutParams.height = displayMetrics.heightPixels
+
+        bottomSheet.layoutParams = childLayoutParams
 
         // Initialize
         viewModel = ViewModelProvider(this, viewModelFactory).get(MainViewModel::class.java)
@@ -101,50 +110,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, MapboxMap.OnMapCli
 
         mapView?.onCreate(savedInstanceState)
         mapView?.getMapAsync(this)
-    }
-
-    private fun initAnchorSheet() {
-        bsBehavior = AnchorSheetBehavior.from(bottomsheet_map)
-        (bsBehavior as AnchorSheetBehavior<*>).state = AnchorSheetBehavior.STATE_COLLAPSED
-
-        //anchor offset. any value between 0 and 1 depending upon the position u want
-        (bsBehavior as AnchorSheetBehavior<*>).setAnchorOffset(0.8f)
-        (bsBehavior as AnchorSheetBehavior<*>).setAnchorSheetCallback(object :
-            AnchorSheetCallback() {
-            override fun onStateChanged(bottomSheet: View, newState: Int) {
-                if (newState == AnchorSheetBehavior.STATE_COLLAPSED) {
-                }
-                if (newState == AnchorSheetBehavior.STATE_EXPANDED) {
-                }
-                if (newState == AnchorSheetBehavior.STATE_DRAGGING) {
-                }
-                if (newState == AnchorSheetBehavior.STATE_ANCHOR) {
-                }
-            }
-
-            override fun onSlide(bottomSheet: View, slideOffset: Float) {
-                val h = bottomSheet.height.toFloat()
-                val off = h * slideOffset
-                when ((bsBehavior as AnchorSheetBehavior<*>).state) {
-                    AnchorSheetBehavior.STATE_DRAGGING -> {
-                        setMapPaddingBotttom(off)
-                        //reposition marker at the center
-                        if (mLoc != null) mapboxMap?.moveCamera(CameraUpdateFactory.newLatLng(mLoc))
-                    }
-                    AnchorSheetBehavior.STATE_SETTLING -> {
-                        setMapPaddingBotttom(off)
-                        //reposition marker at the center
-                        if (mLoc != null) mapboxMap?.moveCamera(CameraUpdateFactory.newLatLng(mLoc))
-                    }
-                    AnchorSheetBehavior.STATE_HIDDEN -> {
-                    }
-                    AnchorSheetBehavior.STATE_EXPANDED -> {
-                    }
-                    AnchorSheetBehavior.STATE_COLLAPSED -> {
-                    }
-                }
-            }
-        })
     }
 
     private fun setMapPaddingBotttom(offset: Float) {
@@ -184,7 +149,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, MapboxMap.OnMapCli
                 .accuracyColor(ContextCompat.getColor(this, R.color.mapboxGreen))
                 .build()
 
-            val locationComponentActivationOptions = LocationComponentActivationOptions.builder(this, loadedMapStyle)
+            val locationComponentActivationOptions = LocationComponentActivationOptions.builder(
+                this,
+                loadedMapStyle
+            )
                 .locationComponentOptions(customLocationComponentOptions)
                 .build()
 
@@ -209,7 +177,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, MapboxMap.OnMapCli
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
         permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
@@ -354,17 +326,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, MapboxMap.OnMapCli
                         }
 
                         bottomsheet_map.description.movementMethod = LinkMovementMethod.getInstance()
+                        val peekHeightPx =
+                            (this.resources.displayMetrics.density * 70).toInt()
+                        bottomSheetBehavior.peekHeight = peekHeightPx
                     }
                 }
             }
-            bottomsheet_map.visibility = View.VISIBLE
-            if(bsBehavior?.state == AnchorSheetBehavior.STATE_COLLAPSED) {
-                bsBehavior?.state = AnchorSheetBehavior.STATE_ANCHOR
-            }
             true
         } else {
-            bottomsheet_map.visibility = View.GONE
-            bsBehavior?.state = AnchorSheetBehavior.STATE_COLLAPSED
+            bottomSheetBehavior.peekHeight = 0
             false
         }
     }

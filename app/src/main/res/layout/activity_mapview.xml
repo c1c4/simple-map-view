@@ -11,14 +11,22 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:mapbox_cameraZoom="11">
-
-        <androidx.coordinatorlayout.widget.CoordinatorLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            app:layout_behavior="@string/appbar_scrolling_view_behavior">
-            <include layout="@layout/bottomsheet_map" />
-        </androidx.coordinatorlayout.widget.CoordinatorLayout>
     </com.mapbox.mapboxsdk.maps.MapView>
+
+    <com.google.android.material.card.MaterialCardView
+        style="@style/Widget.MaterialComponents.BottomSheet.Modal"
+        android:id="@+id/bottomSheet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:behavior_peekHeight="0dp"
+        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
+        app:cardBackgroundColor="#eee"
+        app:cardCornerRadius="5dp"
+        app:cardElevation="8dp">
+
+        <include layout="@layout/bottomsheet_map"/>
+
+    </com.google.android.material.card.MaterialCardView>
 
 
 
